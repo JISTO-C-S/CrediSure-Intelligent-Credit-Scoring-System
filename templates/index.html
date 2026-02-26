@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CrediSure Web Scorer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+  <main class="page">
+    <section class="hero">
+      <p class="eyebrow">Credit Risk Intelligence</p>
+      <h1>CrediSure Loan Eligibility Checker</h1>
+      <p class="sub">Fill the profile below to estimate approval chances, see rejection reasons, and view improvement suggestions.</p>
+    </section>
+
+    {% if errors %}
+      <section class="panel error-panel">
+        <h2>Could not process request</h2>
+        <ul>
+          {% for err in errors %}
+            <li>{{ err }}</li>
+          {% endfor %}
+        </ul>
+      </section>
+    {% endif %}
+
+    <section class="panel">
+      <h2>Application Details</h2>
+      <form method="post" class="grid">
+        {% for field in form_schema %}
+          <label class="field">
+            <span>{{ field.label }}</span>
+            {% if field.type == 'number' %}
+              <input
+                type="number"
+                name="{{ field.name }}"
+                step="any"
+                min="0"
+                value="{{ form_values.get(field.name, '') }}"
+                required
+              >
+              {% if field.hint %}
+                <small>{{ field.hint }}</small>
+              {% endif %}
+            {% else %}
+              <select name="{{ field.name }}" required>
+                <option value="">Select an option</option>
+                {% for option in field.options %}
+                  <option
+                    value="{{ option.value }}"
+                    {% if form_values.get(field.name, '') == option.value %}selected{% endif %}
+                  >
+                    {{ option.label }}
+                  </option>
+                {% endfor %}
+              </select>
+            {% endif %}
+          </label>
+        {% endfor %}
+        <button type="submit" class="btn">Predict Loan Decision</button>
+      </form>
+    </section>
+
+    {% if result %}
+      <section class="panel result {% if result.approved %}ok{% else %}bad{% endif %}">
+        <h2>Prediction Result</h2>
+        <p class="score">Risk score: <strong>{{ "%.1f"|format(result.risk_score) }}%</strong></p>
+        {% if result.approved %}
+          <p class="status ok-text">Status: Likely Approved</p>
+        {% else %}
+          <p class="status bad-text">Status: Rejected</p>
+          <p>Your score is above threshold by {{ "%.1f"|format(result.threshold_gap) }} percentage points.</p>
+
+          {% if result.reasons %}
+            <h3>Main reasons</h3>
+            <ol>
+              {% for reason in result.reasons %}
+                <li><strong>{{ reason.feature }}</strong>: your input was "{{ reason.value }}".</li>
+              {% endfor %}
+            </ol>
+          {% endif %}
+
+          {% if result.advice %}
+            <h3>How to improve</h3>
+            <ol>
+              {% for advice in result.advice %}
+                <li>{{ advice }}</li>
+              {% endfor %}
+            </ol>
+          {% endif %}
+
+          {% if result.simulation %}
+            <h3>Suggested improvement simulation</h3>
+            <p>Simulated risk score: <strong>{{ "%.1f"|format(result.simulation.risk_score) }}%</strong></p>
+            <p>
+              Simulated status:
+              {% if result.simulation.approved %}
+                <span class="ok-text">Likely Approved</span>
+              {% else %}
+                <span class="bad-text">Still High Risk</span>
+              {% endif %}
+            </p>
+          {% endif %}
+        {% endif %}
+      </section>
+    {% endif %}
+  </main>
+</body>
+</html>
